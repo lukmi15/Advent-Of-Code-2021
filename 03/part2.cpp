@@ -93,21 +93,21 @@ int main(int argc, char **argv)
 
 		//Create regexes
 		stringstream gamma_regexp_ss, epsilon_regexp_ss;
-		gamma_regexp_ss << "/^";
-		epsilon_regexp_ss << "/^";
+		gamma_regexp_ss << '^';
+		epsilon_regexp_ss << '^';
 		bitset<8> gamma_bits(gamma_rate), epsilon_bits(epsilon_rate);
 		for (unsigned j = 0; j < numlen - i; j++) //Add the actual value for the bits
 		{
 			gamma_regexp_ss << gamma_bits[j];
-			epsilon_regexp_ss << gamma_bits[j];
+			epsilon_regexp_ss << !gamma_bits[j];
 		}
 		for (unsigned j = numlen - i; j < numlen; j++) //Fill the rest with placeholders
 		{
 			gamma_regexp_ss << '.';
 			epsilon_regexp_ss << '.';
 		}
-		gamma_regexp_ss << "$/";
-		epsilon_regexp_ss << "$/";
+		gamma_regexp_ss << '$';
+		epsilon_regexp_ss << '$';
 		regex gamma_regexp(gamma_regexp_ss.str());
 		regex epsilon_regexp(epsilon_regexp_ss.str());
 #ifdef DEBUG
@@ -118,15 +118,24 @@ int main(int argc, char **argv)
 		//Look for matches
 		for (string num : nums)
 		{
+#ifdef DEBUG
+			cerr << "Considering num '" << num << '\'' << " with gamma regular expression '" << gamma_regexp_ss.str() << "' and epsilon regular expression '" << epsilon_regexp_ss.str() << '\'' << endl;
+#endif //DEBUG
 			if (not o2_rating_found and regex_match(num, gamma_regexp))
 			{
 				o2_rating = num;
 				o2_rating_found = true;
+#ifdef DEBUG
+			cerr << "Found O2 rating: " << o2_rating << endl;
+#endif //DEBUG
 			}
 			if (not co2_rating_found and regex_match(num, epsilon_regexp))
 			{
 				co2_rating = num;
 				co2_rating_found = true;
+#ifdef DEBUG
+			cerr << "Found CO2 rating: " << co2_rating << endl;
+#endif //DEBUG
 			}
 		}
 		if (o2_rating_found and co2_rating_found) //If we found both solutions, we can stop
@@ -144,7 +153,17 @@ int main(int argc, char **argv)
 		cerr << "[Debug] co2 rating was not found" << endl;
 #endif //DEBUG
 	if (o2_rating_found and co2_rating_found)
-		cout << gamma_rate * epsilon_rate << endl;
+	{
+		unsigned o2r = 0;
+		unsigned co2r = 0;
+		size_t o2r_len = o2_rating.length();
+		for (unsigned i = 0; i < o2r_len; i++)
+		{
+			if (o2_rating[i] == 1)
+				o2r |= (0x1 << (o2r_len - 1 - i)); //My brain is mush, hjelp!
+		}
+		cout << o2r * ~o2r << endl;
+	}
 	else
 	{
 		cout << "Failed to find o2 and co2 ratings" << endl;
