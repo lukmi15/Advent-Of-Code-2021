@@ -12,6 +12,12 @@ Date of creation	: 12/5/2021
 #include <sstream>
 using namespace std;
 
+void fail(const string& msg)
+{
+	cerr << msg << endl;
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	uint32_t gamma_rate = 0;
@@ -84,11 +90,12 @@ int main(int argc, char **argv)
 
 	//Find oxygen generator rating and co2 scrubber rating
 	string o2_rating, co2_rating;
-	bool o2_rating_found = false;
-	bool co2_rating_found = false;
 
-	//Reverse approach: Test if a regex matches taking away bits from the back
-	for (unsigned i = 0; i < numlen - 1; i++) //For each bit in the number
+	//Determine gamma and epsilon rate //FIXME It's wrong!
+	vector<string> next_gamma_rate_candidates, next_epsilon_rate_candidates;
+	vector<string> gamma_rate_candiates = nums;
+	vector<string> epsilon_rate_candiates = nums;
+	for (unsigned i = 1; i < numlen ; i++) //For each bit in the number
 	{
 
 		//Create regexes
@@ -96,12 +103,12 @@ int main(int argc, char **argv)
 		gamma_regexp_ss << '^';
 		epsilon_regexp_ss << '^';
 		bitset<8> gamma_bits(gamma_rate), epsilon_bits(epsilon_rate);
-		for (unsigned j = 0; j < numlen - i; j++) //Add the actual value for the bits
+		for (unsigned j = 0; j < i; j++)
 		{
 			gamma_regexp_ss << gamma_bits[j];
-			epsilon_regexp_ss << !gamma_bits[j];
+			epsilon_regexp_ss << epsilon_bits[j];
 		}
-		for (unsigned j = numlen - i; j < numlen; j++) //Fill the rest with placeholders
+		for (unsigned j = i; j < numlen; j++) //Fill the rest with placeholders
 		{
 			gamma_regexp_ss << '.';
 			epsilon_regexp_ss << '.';
@@ -121,53 +128,41 @@ int main(int argc, char **argv)
 #ifdef DEBUG
 			cerr << "Considering num '" << num << '\'' << " with gamma regular expression '" << gamma_regexp_ss.str() << "' and epsilon regular expression '" << epsilon_regexp_ss.str() << '\'' << endl;
 #endif //DEBUG
-			if (not o2_rating_found and regex_match(num, gamma_regexp))
-			{
-				o2_rating = num;
-				o2_rating_found = true;
-#ifdef DEBUG
-			cerr << "Found O2 rating: " << o2_rating << endl;
-#endif //DEBUG
-			}
-			if (not co2_rating_found and regex_match(num, epsilon_regexp))
-			{
-				co2_rating = num;
-				co2_rating_found = true;
-#ifdef DEBUG
-			cerr << "Found CO2 rating: " << co2_rating << endl;
-#endif //DEBUG
-			}
+			if (regex_match(num, gamma_regexp))
+				next_gamma_rate_candidates.push_back(num);
+			if (regex_match(num, epsilon_regexp))
+				next_epsilon_rate_candidates.push_back(num);
 		}
-		if (o2_rating_found and co2_rating_found) //If we found both solutions, we can stop
-			break;
+		if (next_gamma_rate_candidates.size() == 1)
+		{
+			o2_rating = next_gamma_rate_candidates[0];
+#ifdef DEBUG
+			cerr << "[Debug] Found o2 rating " << o2_rating << endl;
+#endif //DEBUG
+		}
+		if (next_gamma_rate_candidates.size() == 0)
+			fail("Could not find gamma rate");
+		if (next_epsilon_rate_candidates.size() == 1)
+		{
+			co2_rating = next_epsilon_rate_candidates[0];
+#ifdef DEBUG
+			cerr << "[Debug] Found co2 rating " << co2_rating << endl;
+#endif //DEBUG
+		}
+		if (next_epsilon_rate_candidates.size() == 0)
+			fail("Could not find epsilon rate");
 	}
 
-#ifdef DEBUG
-	if (o2_rating_found)
-		cerr << "[Debug] o2 rating was found and is is " << o2_rating << endl;
-	else
-		cerr << "[Debug] o2 rating was not found" << endl;
-	if (co2_rating_found)
-		cerr << "[Debug] co2 rating was found and is is " << co2_rating << endl;
-	else
-		cerr << "[Debug] co2 rating was not found" << endl;
-#endif //DEBUG
-	if (o2_rating_found and co2_rating_found)
+	//Transform strings of bits to numbers //TODO
+	unsigned o2r = 0;
+	unsigned co2r = 0;
+	size_t o2r_len = o2_rating.length();
+	for (unsigned i = 0; i < o2r_len; i++)
 	{
-		unsigned o2r = 0;
-		unsigned co2r = 0;
-		size_t o2r_len = o2_rating.length();
-		for (unsigned i = 0; i < o2r_len; i++)
-		{
-			if (o2_rating[i] == 1)
-				o2r |= (0x1 << (o2r_len - 1 - i)); //My brain is mush, hjelp!
-		}
-		cout << o2r * ~o2r << endl;
+		if (o2_rating[i] == 1)
+			o2r |= (0x1 << (o2r_len - 1 - i)); //My brain is mush, hjelp!
 	}
-	else
-	{
-		cout << "Failed to find o2 and co2 ratings" << endl;
-		return 1;
-	}
+
+	cout << o2r * ~o2r << endl;
 	return 0;
 }
