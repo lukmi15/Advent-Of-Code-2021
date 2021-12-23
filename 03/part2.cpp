@@ -89,80 +89,62 @@ int main(int argc, char **argv)
 	}
 
 	//Find oxygen generator rating and co2 scrubber rating
+	vector<string> o2_candidates, co2_candidates;
+	vector<string> o2_chosen(nums), co2_chosen(nums);
 	string o2_rating, co2_rating;
-
-	//Determine gamma and epsilon rate //FIXME It's wrong!
-	vector<string> next_gamma_rate_candidates, next_epsilon_rate_candidates;
-	vector<string> gamma_rate_candiates = nums;
-	vector<string> epsilon_rate_candiates = nums;
-	for (unsigned i = 1; i < numlen ; i++) //For each bit in the number
+	for (size_t bit = 0; bit < numlen; bit++)
 	{
 
-		//Create regexes
-		stringstream gamma_regexp_ss, epsilon_regexp_ss;
-		gamma_regexp_ss << '^';
-		epsilon_regexp_ss << '^';
-		bitset<8> gamma_bits(gamma_rate), epsilon_bits(epsilon_rate);
-		for (unsigned j = 0; j < i; j++)
+		//Oxygen generator rating
+		if (o2_chosen.size() > 1)
 		{
-			gamma_regexp_ss << gamma_bits[j];
-			epsilon_regexp_ss << epsilon_bits[j];
-		}
-		for (unsigned j = i; j < numlen; j++) //Fill the rest with placeholders
-		{
-			gamma_regexp_ss << '.';
-			epsilon_regexp_ss << '.';
-		}
-		gamma_regexp_ss << '$';
-		epsilon_regexp_ss << '$';
-		regex gamma_regexp(gamma_regexp_ss.str());
-		regex epsilon_regexp(epsilon_regexp_ss.str());
-#ifdef DEBUG
-		cout << "[Debug] Crafted gamma regexp " << gamma_regexp_ss.str() << " for iteration " << i << endl;
-		cout << "[Debug] Crafted epsilon regexp " << epsilon_regexp_ss.str() << " for iteration " << i << endl;
-#endif //DEBUG
 
-		//Look for matches
-		for (string num : nums)
-		{
-#ifdef DEBUG
-			cerr << "Considering num '" << num << '\'' << " with gamma regular expression '" << gamma_regexp_ss.str() << "' and epsilon regular expression '" << epsilon_regexp_ss.str() << '\'' << endl;
-#endif //DEBUG
-			if (regex_match(num, gamma_regexp))
-				next_gamma_rate_candidates.push_back(num);
-			if (regex_match(num, epsilon_regexp))
-				next_epsilon_rate_candidates.push_back(num);
+			//Switch vectors to prepare for the next run
+			o2_candidates = o2_chosen;
+			o2_chosen.clear();
+
+			//Consider
+			for (string num : o2_candidates)
+				if (num[bit] == gamma_rate[bit])
+					o2_chosen.push_back(num);
+
 		}
-		if (next_gamma_rate_candidates.size() == 1)
+
+		//CO2 scrubber rating
+		if (co2_chosen.size() > 1)
 		{
-			o2_rating = next_gamma_rate_candidates[0];
-#ifdef DEBUG
-			cerr << "[Debug] Found o2 rating " << o2_rating << endl;
-#endif //DEBUG
+
+			//Switch vectors to prepare for the next run
+			co2_candidates = co2_chosen;
+			co2_chosen.clear();
+
+			//Consider
+			for (string num : co2_candidates)
+				if (num[bit] == epsilon_rate[num])
+					co2_chosen.push_back(num);
+
 		}
-		if (next_gamma_rate_candidates.size() == 0)
-			fail("Could not find gamma rate");
-		if (next_epsilon_rate_candidates.size() == 1)
+
+		//Test if we are done
+		if (o2_chosen.size() == 1 and co2_chosen.size() == 1)
 		{
-			co2_rating = next_epsilon_rate_candidates[0];
-#ifdef DEBUG
-			cerr << "[Debug] Found co2 rating " << co2_rating << endl;
-#endif //DEBUG
+			o2_rating = o2_chosen[0];
+			co2_rating = co2_chosen[0];
+			break;
 		}
-		if (next_epsilon_rate_candidates.size() == 0)
-			fail("Could not find epsilon rate");
+
 	}
+#ifdef DEBUG
+	cerr << "[Debug] O2 rating is " << o2_rating << endl;
+	cerr << "[Debug] CO2 rating is " << co2_rating << endl;
+#endif //DEBUG
 
-	//Transform strings of bits to numbers //TODO
-	unsigned o2r = 0;
-	unsigned co2r = 0;
-	size_t o2r_len = o2_rating.length();
-	for (unsigned i = 0; i < o2r_len; i++)
-	{
-		if (o2_rating[i] == 1)
-			o2r |= (0x1 << (o2r_len - 1 - i)); //My brain is mush, hjelp!
-	}
+	//Transform strings to numbers
+	unsigned o2_generator_rating;
+	unsigned co2_scrubber_rating;
+	//TODO
 
-	cout << o2r * ~o2r << endl;
+	//Output
+	cout << "The result is " << (o2_generator_rating * co2_scrubber_rating) << endl;
 	return 0;
 }
