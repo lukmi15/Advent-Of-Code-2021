@@ -3,166 +3,130 @@ Author(s)		: Lukas Mirow
 Date of creation	: 12/5/2021
 */
 
-#define DEBUG
 #include <iostream>
 #include <string>
+#include <list>
 #include <bitset>
-#include <vector>
-#include <regex>
-#include <sstream>
 using namespace std;
 
+typedef uint16_t num_t;
+constexpr unsigned BITLEN = 16;
+
+//Print message and exit with failure code
 void fail(const string& msg)
 {
 	cerr << msg << endl;
 	exit(1);
 }
 
+//Find most common bits in given numbers at a given position
+//Returns true on 1 and false on 0
+bool find_most_common_bit_in_nums_at_pos(const list<num_t>& nums, const unsigned pos)
+{
+
+	//Sanity check
+	if (pos >= BITLEN)
+		throw "pos >= BITLEN";
+
+	//Count 1s
+	size_t n1s = 0;
+	for (const num_t num : nums)
+		if (num & (1 << pos))
+			n1s++;
+
+	//Determine most common bit
+	const size_t cnums = nums.size();
+	if (cnums % 2 == 0)
+		return n1s >= cnums / 2; //1 wins in case of draw
+	else
+		return n1s > cnums / 2;
+	return 0;
+
+}
+
+//Filters list of candidates by removing unfitting 1s bit-by-bit
+void find_gen_or_scrubber_rating(list<num_t>& candidates, const unsigned numlen, const bool find_scrubber_rating = false)
+{
+	list<num_t>::iterator tmp, it;
+	bool bit_to_keep;
+	for (int i = numlen - 1; i >= 0 and candidates.size() > 1; i--)
+	{
+		{//Debug
+			cout << "Candidate list:" << endl;
+			for (const num_t cand : candidates)
+				cout << bitset<BITLEN>(cand) << endl;
+		}
+		it = candidates.begin();
+		if (find_scrubber_rating)
+			bit_to_keep = not find_most_common_bit_in_nums_at_pos(candidates, i);
+		else
+			bit_to_keep = find_most_common_bit_in_nums_at_pos(candidates, i);
+		while (it != candidates.end() and candidates.size() > 1)
+		{
+			cout << "Bit at pos " << i << " must be " << bit_to_keep << endl;
+			if (static_cast<bool>(*it & (1 << i)) != bit_to_keep)
+			{
+				cout << "Removing candidate " << bitset<BITLEN>(*it) << endl;
+				tmp = next(it);
+				candidates.erase(it);
+				it = tmp;
+			}
+			else
+				it++;
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
-	uint32_t gamma_rate = 0;
-	uint32_t epsilon_rate = 0;
-	constexpr size_t BITLENGTH = 32;
-	string num_msb;
-	unsigned high_bit_counts_msb[BITLENGTH] = {0};
-	unsigned number_count = 0;
-	size_t numlen;
-	vector<string> nums;
-
-	//Go through all numbers
-	do
+	//Read input
+	list<num_t> nums;
+	char c;
+	num_t num;
+	unsigned numlen = 0;
+	unsigned numlen_tmp = 0;
+	while (not cin.eof())
 	{
-
-		//Get number and check for validity
-		cin >> num_msb;
-		if (cin.eof())
-			break;
-		numlen = num_msb.length();
-		if (numlen > 32)
+		num = 0;
+		numlen_tmp = 0;
+		do
 		{
-			cerr << "[Error] read number '" << num_msb << "' but its length is '" << numlen << "' as opposted to the maximum bitlength of '" << BITLENGTH << '\'' << endl;
-			return 1;
+			cin.get(c);
+			if (c == '1')
+			{
+				num = (num << 1) | 1;
+				numlen_tmp++;
+			}
+			else if (c == '0')
+			{
+				num = (num << 1);
+				numlen_tmp++;
+			}
 		}
-		nums.push_back(num_msb);
-#ifdef DEBUG
-		cerr << "[Debug] Num length is " << numlen << endl;
-#endif //DEBUG
-
-		//Count bits
-		for (size_t i = 0; i < numlen; i++)
+		while (c != '\n' and not cin.eof());
+		if (numlen_tmp > 0)
 		{
-			char bit = num_msb[i];
-			if (bit == '1')
-				high_bit_counts_msb[i]++;
-#ifdef DEBUG
-			cerr << "[Debug] Bit " << i << " of number " << number_count + 1 << " is " << bit << endl;
-			cerr << "[Debug] New high bit counts: {";
-			for (unsigned j = 0; j < BITLENGTH - 1; j++)
-				cerr << high_bit_counts_msb[j] << ", ";
-			cerr << high_bit_counts_msb[BITLENGTH - 1] << "}" << endl;
-#endif //DEBUG
-		}
-		number_count++; //And numbers
-
-	}
-	while (not cin.eof());
-
-	//Generate gamma and epsilon rates
-	for (unsigned i = 0; i < numlen; i++)
-	{
-		if (high_bit_counts_msb[i] > number_count / 2)
-		{
-			gamma_rate |= (0x1 << (numlen - 1 - i));
-#ifdef DEBUG
-			bitset<8> g(gamma_rate);
-			cerr << "[Debug] Adding 1 in gamma rate on position " << numlen - 1 - i << ", gamma rate is now " << g << endl;
-#endif //DEBUG
-		}
-		else
-		{
-			epsilon_rate |= (0x1 << (numlen - 1 - i));
-#ifdef DEBUG
-			bitset<8> e(epsilon_rate);
-			cerr << "[Debug] Adding 1 in epsilon rate on position " << numlen - 1 - i << ", epsilon rate is now " << e << endl;
-#endif //DEBUG
+			nums.push_back(num);
+			numlen = numlen_tmp;
 		}
 	}
+	cout << "Length of a diagnostics value is " << numlen << endl;
+	cout << "Read diagnostics:" << endl;
+	for (const num_t num : nums)
+		cout << bitset<BITLEN>(num) << endl;
 
-	//Find oxygen generator rating and co2 scrubber rating
-	string o2_rating, co2_rating;
+	//Determine O2 generator rating
+	list<num_t> o2gr_candidates(nums);
+	find_gen_or_scrubber_rating(o2gr_candidates, numlen);
+	cout << "O2 generator rating: 0b" << bitset<BITLEN>(o2gr_candidates.front()) << endl;
 
-	//Determine gamma and epsilon rate //FIXME It's wrong!
-	vector<string> next_gamma_rate_candidates, next_epsilon_rate_candidates;
-	vector<string> gamma_rate_candiates = nums;
-	vector<string> epsilon_rate_candiates = nums;
-	for (unsigned i = 1; i < numlen ; i++) //For each bit in the number
-	{
+	//Determine CO2 scrubber rating
+	list<num_t> co2sr_candidates(nums);
+	find_gen_or_scrubber_rating(co2sr_candidates, numlen, true);
+	cout << "CO2 scrubber rating: 0b" << bitset<BITLEN>(co2sr_candidates.front()) << endl;
 
-		//Create regexes
-		stringstream gamma_regexp_ss, epsilon_regexp_ss;
-		gamma_regexp_ss << '^';
-		epsilon_regexp_ss << '^';
-		bitset<8> gamma_bits(gamma_rate), epsilon_bits(epsilon_rate);
-		for (unsigned j = 0; j < i; j++)
-		{
-			gamma_regexp_ss << gamma_bits[j];
-			epsilon_regexp_ss << epsilon_bits[j];
-		}
-		for (unsigned j = i; j < numlen; j++) //Fill the rest with placeholders
-		{
-			gamma_regexp_ss << '.';
-			epsilon_regexp_ss << '.';
-		}
-		gamma_regexp_ss << '$';
-		epsilon_regexp_ss << '$';
-		regex gamma_regexp(gamma_regexp_ss.str());
-		regex epsilon_regexp(epsilon_regexp_ss.str());
-#ifdef DEBUG
-		cout << "[Debug] Crafted gamma regexp " << gamma_regexp_ss.str() << " for iteration " << i << endl;
-		cout << "[Debug] Crafted epsilon regexp " << epsilon_regexp_ss.str() << " for iteration " << i << endl;
-#endif //DEBUG
+	//Calc flag
+	cout << "Flag: " << o2gr_candidates.front() * co2sr_candidates.front() << endl;
 
-		//Look for matches
-		for (string num : nums)
-		{
-#ifdef DEBUG
-			cerr << "Considering num '" << num << '\'' << " with gamma regular expression '" << gamma_regexp_ss.str() << "' and epsilon regular expression '" << epsilon_regexp_ss.str() << '\'' << endl;
-#endif //DEBUG
-			if (regex_match(num, gamma_regexp))
-				next_gamma_rate_candidates.push_back(num);
-			if (regex_match(num, epsilon_regexp))
-				next_epsilon_rate_candidates.push_back(num);
-		}
-		if (next_gamma_rate_candidates.size() == 1)
-		{
-			o2_rating = next_gamma_rate_candidates[0];
-#ifdef DEBUG
-			cerr << "[Debug] Found o2 rating " << o2_rating << endl;
-#endif //DEBUG
-		}
-		if (next_gamma_rate_candidates.size() == 0)
-			fail("Could not find gamma rate");
-		if (next_epsilon_rate_candidates.size() == 1)
-		{
-			co2_rating = next_epsilon_rate_candidates[0];
-#ifdef DEBUG
-			cerr << "[Debug] Found co2 rating " << co2_rating << endl;
-#endif //DEBUG
-		}
-		if (next_epsilon_rate_candidates.size() == 0)
-			fail("Could not find epsilon rate");
-	}
-
-	//Transform strings of bits to numbers //TODO
-	unsigned o2r = 0;
-	unsigned co2r = 0;
-	size_t o2r_len = o2_rating.length();
-	for (unsigned i = 0; i < o2r_len; i++)
-	{
-		if (o2_rating[i] == 1)
-			o2r |= (0x1 << (o2r_len - 1 - i)); //My brain is mush, hjelp!
-	}
-
-	cout << o2r * ~o2r << endl;
 	return 0;
 }
