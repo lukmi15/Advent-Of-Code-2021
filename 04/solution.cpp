@@ -1,4 +1,4 @@
-/*Advent of Code 2021 day 4, part 2
+/*Advent of Code 2021 day 4
 Author(s)		: Lukas Mirow
 Date of creation	: 11/14/2022
 */
@@ -11,7 +11,7 @@ Date of creation	: 11/14/2022
 using namespace std;
 
 //Read input from standard input
-void read_input(vector<unsigned>& draw_nums, vector<BingoBoard>& boards)
+void read_input(vector<unsigned>& draw_nums, vector<BingoBoard*>& boards)
 {
 	char c;
 	string nextint;
@@ -39,7 +39,7 @@ void read_input(vector<unsigned>& draw_nums, vector<BingoBoard>& boards)
 		bnums.push_back(bnum);
 		if (bnums.size() == BOARD_SIZE) //Create and push new board
 		{
-			boards.push_back(BingoBoard(bnums));
+			boards.push_back(new BingoBoard(bnums));
 			bnums.clear();
 		}
 		cin >> bnum;
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 
 	//Read input
 	vector<unsigned> draw_nums;
-	vector<BingoBoard> boards;
+	vector<BingoBoard*> boards;
 	read_input(draw_nums, boards);
 
 	//Find out which board wins first
