@@ -40,7 +40,7 @@ class BingoBoard
 			{
 				bool tmp = true;
 				for (unsigned j = 0; j < HEIGHT; j++)
-					tmp = tmp and marked[i*5 + j];
+					tmp = tmp and marked[j*5 + i];
 				if (tmp)
 					return tmp;
 			}
